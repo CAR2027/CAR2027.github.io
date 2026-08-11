@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorador de Límites Cuadráticos</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MathJax for rendering math formulas -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Chart.js for graphing -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+        }
+        .math-container {
+            font-size: 1.25rem;
+            overflow-x: auto;
+        }
+        #chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex justify-center items-start min-h-screen">
+
+    <div class="max-w-4xl w-full bg-white rounded-xl shadow-lg p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <!-- Controles y Cálculo -->
+        <div class="flex flex-col space-y-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">Explorador de Límites</h1>
+                <p class="text-gray-600 text-sm">Ajusta los parámetros para la función \( f(x) = ax^2 + bx + c \)</p>
+            </div>
+
+            <div class="space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <!-- Coeficiente 'a' -->
+                <div>
+                    <label for="slider-a" class="block text-sm font-medium text-gray-700">
+                        Coeficiente \( a \) (Cuadrático): <span id="val-a" class="font-bold text-blue-600">12</span>
+                    </label>
+                    <input type="range" id="slider-a" min="-20" max="20" step="1" value="12" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                </div>
+
+                <!-- Coeficiente 'b' -->
+                <div>
+                    <label for="slider-b" class="block text-sm font-medium text-gray-700">
+                        Coeficiente \( b \) (Lineal): <span id="val-b" class="font-bold text-green-600">6</span>
+                    </label>
+                    <input type="range" id="slider-b" min="-20" max="20" step="1" value="6" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                </div>
+
+                <!-- Coeficiente 'c' -->
+                <div>
+                    <label for="slider-c" class="block text-sm font-medium text-gray-700">
+                        Constante \( c \): <span id="val-c" class="font-bold text-purple-600">-4</span>
+                    </label>
+                    <input type="range" id="slider-c" min="-20" max="20" step="1" value="-4" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                </div>
+
+                <!-- Valor límite 'x' -->
+                <div class="pt-2 border-t border-gray-300">
+                    <label for="slider-x" class="block text-sm font-medium text-gray-700">
+                        Calcular límite cuando \( x \to \): <span id="val-x" class="font-bold text-red-600">-1</span>
+                    </label>
+                    <input type="range" id="slider-x" min="-10" max="10" step="0.5" value="-1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                </div>
+            </div>
+
+            <!-- Visualización del Cálculo Matemático -->
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 class="text-lg font-semibold text-blue-800 mb-3">Cálculo del Límite:</h3>
+                <div id="math-display" class="math-container text-gray-800 text-center">
+                    <!-- MathJax will render here -->
+                    Cargando ecuación...
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfica -->
+        <div class="flex flex-col">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 text-center">Visualización Gráfica</h2>
+            <div id="chart-container" class="bg-white border border-gray-200 rounded-lg shadow-inner p-2 flex-grow">
+                <canvas id="mathChart"></canvas>
+            </div>
+            <p class="text-xs text-gray-500 mt-3 text-center">
+                El punto rojo representa el valor al que se acerca la función en el límite. Como la función es continua, el punto pertenece a la curva.
+            </p>
+        </div>
+
+    </div>
+
+    <script>
+        // Variables de estado inicial
+        let a = 12;
+        let b = 6;
+        let c = -4;
+        let target_x = -1;
+        let chartInstance = null;
+
+        // Elementos del DOM
+        const sliderA = document.getElementById('slider-a');
+        const sliderB = document.getElementById('slider-b');
+        const sliderC = document.getElementById('slider-c');
+        const sliderX = document.getElementById('slider-x');
+        
+        const valA = document.getElementById('val-a');
+        const valB = document.getElementById('val-b');
+        const valC = document.getElementById('val-c');
+        const valX = document.getElementById('val-x');
+
+        const mathDisplay = document.getElementById('math-display');
+
+        // Función para calcular f(x)
+        function f(x) {
+            return a * Math.pow(x, 2) + b * x + c;
+        }
+
+        // Función para actualizar las matemáticas renderizadas por MathJax
+        function updateMathDisplay() {
+            // Manejo de signos para la ecuación bonita
+            const signB = b >= 0 ? `+ ${b}` : `- ${Math.abs(b)}`;
+            const signC = c >= 0 ? `+ ${c}` : `- ${Math.abs(c)}`;
+            
+            const limitResult = f(target_x);
+            
+            // Construir el string de LaTeX
+            const texString = `
+                \\begin{align*}
+                \\lim_{x \\to ${target_x}} &(${a}x^2 ${signB}x ${signC}) \\\\
+                &= ${a}(${target_x})^2 ${signB}(${target_x}) ${signC} \\\\
+                &= ${a * Math.pow(target_x, 2)} ${b * target_x >= 0 ? '+' : '-'} ${Math.abs(b * target_x)} ${signC} \\\\
+                &= \\mathbf{${limitResult}}
+                \\end{align*}
+            `;
+
+            mathDisplay.innerHTML = `\\(${texString}\\)`;
+            
+            // Indicar a MathJax que vuelva a renderizar
+            if (window.MathJax) {
+                MathJax.typesetPromise([mathDisplay]).catch(function (err) {
+                    console.error('MathJax Error:', err.message);
+                });
+            }
+        }
+
+        // Función para generar datos para la gráfica
+        function generateChartData() {
+            const dataPoints = [];
+            const labels = [];
+            // Rango de visualización en x
+            const minX = -10;
+            const maxX = 10;
+            const step = 0.5;
+
+            for (let x = minX; x <= maxX; x += step) {
+                labels.push(x.toFixed(1));
+                dataPoints.push({ x: x, y: f(x) });
+            }
+            return { labels, dataPoints };
+        }
+
+        // Función para actualizar o crear la gráfica
+        function updateChart() {
+            const { labels, dataPoints } = generateChartData();
+            const limitY = f(target_x);
+
+            const datasetCurve = {
+                label: `f(x) = ${a}x² ${b >= 0 ? '+' : ''}${b}x ${c >= 0 ? '+' : ''}${c}`,
+                data: dataPoints,
+                borderColor: 'rgba(59, 130, 246, 1)', // Tailwind blue-500
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.4,
+                fill: false,
+                type: 'line'
+            };
+
+            const datasetPoint = {
+                label: `Límite en x=${target_x}`,
+                data: [{ x: target_x, y: limitY }],
+                backgroundColor: 'rgba(220, 38, 38, 1)', // Tailwind red-600
+                borderColor: 'white',
+                borderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 8,
+                type: 'scatter'
+            };
+
+            if (chartInstance) {
+                chartInstance.data.datasets[0] = datasetCurve;
+                chartInstance.data.datasets[1] = datasetPoint;
+                chartInstance.update();
+            } else {
+                const ctx = document.getElementById('mathChart').getContext('2d');
+                chartInstance = new Chart(ctx, {
+                    data: {
+                        datasets: [datasetCurve, datasetPoint]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            duration: 300 // Animación suave al mover sliders
+                        },
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom',
+                                min: -10,
+                                max: 10,
+                                title: {
+                                    display: true,
+                                    text: 'Eje X'
+                                },
+                                grid: {
+                                    color: (context) => context.tick.value === 0 ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.1)',
+                                    lineWidth: (context) => context.tick.value === 0 ? 2 : 1
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'f(x)'
+                                },
+                                grid: {
+                                    color: (context) => context.tick.value === 0 ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.1)',
+                                    lineWidth: (context) => context.tick.value === 0 ? 2 : 1
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `(${context.parsed.x}, ${context.parsed.y})`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Manejadores de eventos para los sliders
+        function handleSliderChange() {
+            a = parseFloat(sliderA.value);
+            b = parseFloat(sliderB.value);
+            c = parseFloat(sliderC.value);
+            target_x = parseFloat(sliderX.value);
+
+            valA.textContent = a;
+            valB.textContent = b;
+            valC.textContent = c;
+            valX.textContent = target_x;
+
+            updateMathDisplay();
+            updateChart();
+        }
+
+        sliderA.addEventListener('input', handleSliderChange);
+        sliderB.addEventListener('input', handleSliderChange);
+        sliderC.addEventListener('input', handleSliderChange);
+        sliderX.addEventListener('input', handleSliderChange);
+
+        // Inicialización cuando MathJax y el DOM estén listos
+        window.addEventListener('load', () => {
+            // Pequeño retraso para asegurar que MathJax se cargó si la red es lenta
+            setTimeout(() => {
+                updateMathDisplay();
+                updateChart();
+            }, 500);
+        });
+
+    </script>
+</body>
+</html>
