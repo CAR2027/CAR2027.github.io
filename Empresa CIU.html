@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis Interactivo de Utilidad</title>
+    <style>
+        :root {
+            --costo-color: #EF4444; 
+            --ingreso-color: #3B82F6;
+            --utilidad-color: #10B981;
+            --bg: #F9FAFB;
+            --panel: #FFFFFF;
+            --text: #1F2937;
+            --btn-bg: #E5E7EB;
+            --btn-hover: #D1D5DB;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1000px;
+            width: 100%;
+            background: var(--panel);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+        .visual-panel {
+            flex: 1 1 450px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        canvas {
+            background-color: #FAFAFA;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            width: 100%;
+            touch-action: none;
+            cursor: default;
+        }
+        .control-panel {
+            flex: 1 1 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        h2 { margin-top: 0; color: #111827; }
+        .input-group {
+            background: var(--bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #E5E7EB;
+        }
+        .input-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .input-row:last-child { margin-bottom: 0; }
+        .input-row label { font-weight: bold; font-size: 0.9em; flex: 1; }
+        
+        .number-control {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border: 1px solid #D1D5DB;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .number-control button {
+            background: var(--btn-bg);
+            border: none;
+            padding: 6px 12px;
+            font-weight: bold;
+            font-size: 1.1em;
+            cursor: pointer;
+            color: #374151;
+            transition: background 0.2s;
+        }
+        .number-control button:hover { background: var(--btn-hover); }
+        .number-control input {
+            width: 50px;
+            text-align: center;
+            border: none;
+            padding: 6px;
+            font-size: 1em;
+            font-weight: bold;
+            outline: none;
+            -moz-appearance: textfield;
+        }
+        .number-control input::-webkit-outer-spin-button,
+        .number-control input::-webkit-inner-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+
+        .eq-box {
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 1.1em;
+            background: #F3F4F6;
+        }
+        .eq-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .eq-c { color: var(--costo-color); }
+        .eq-i { color: var(--ingreso-color); }
+        .eq-u { color: var(--utilidad-color); }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #D1D5DB;
+            padding: 10px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            pointer-events: none;
+            font-size: 0.85em;
+            display: none;
+            z-index: 10;
+        }
+        .legend {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 10px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .legend span { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+        .instruction { text-align: center; font-size: 0.85em; color: #6B7280; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="visual-panel">
+        <canvas id="chartCanvas" width="500" height="400"></canvas>
+        <div id="hoverTooltip" class="tooltip"></div>
+        <p class="instruction">Puedes arrastrar los puntos circulares en la gráfica para cambiar los valores.</p>
+        <div class="legend">
+            <span><div class="dot" style="background: var(--costo-color);"></div> Costo</span>
+            <span><div class="dot" style="background: var(--ingreso-color);"></div> Ingreso</span>
+            <span><div class="dot" style="background: var(--utilidad-color);"></div> Utilidad</span>
+        </div>
+    </div>
+
+    <div class="control-panel">
+        <h2>Panel de Negocio</h2>
+        
+        <div class="input-group">
+            <div class="input-row">
+                <label>Precio Unit. (S/.)</label>
+                <div class="number-control">
+                    <button onclick="changeVal('P', -1)">-</button>
+                    <input type="number" id="val-p" value="35" min="1">
+                    <button onclick="changeVal('P', 1)">+</button>
+                </div>
+            </div>
+            <div class="input-row">
+                <label>Costo Var. (S/.)</label>
+                <div class="number-control">
+                    <button onclick="changeVal('Cv', -1)">-</button>
+                    <input type="number" id="val-cv" value="25" min="0">
+                    <button onclick="changeVal('Cv', 1)">+</button>
+                </div>
+            </div>
+            <div class="input-row">
+                <label>Costo Fijo (S/.)</label>
+                <div class="number-control">
+                    <button onclick="changeVal('Cf', -100)">-</button>
+                    <input type="number" id="val-cf" value="4000" min="0" step="100">
+                    <button onclick="changeVal('Cf', 100)">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="eq-box">
+            <div class="eq-row eq-c"><b>C(q)</b> <span id="eq-c-text"></span></div>
+            <div class="eq-row eq-i"><b>I(q)</b> <span id="eq-i-text"></span></div>
+            <div class="eq-row eq-u"><b>U(q)</b> <span id="eq-u-text"></span></div>
+        </div>
+        
+        <div style="background: #FFFBEB; border-left: 4px solid #F59E0B; padding: 10px; font-size: 0.9em;">
+            <b>Punto de Equilibrio:</b> <span id="equilibrio-text"></span><br>
+            <span style="font-size: 0.85em; color: #6B7280;">Unidades a vender para no perder ni ganar dinero.</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('chartCanvas');
+    const ctx = canvas.getContext('2d');
+    const tooltip = document.getElementById('hoverTooltip');
+    
+    const inputP = document.getElementById('val-p');
+    const inputCv = document.getElementById('val-cv');
+    const inputCf = document.getElementById('val-cf');
+
+    let P = 35, Cv = 25, Cf = 4000;
+    
+    // Parámetros fijos de escala para facilitar el arrastre
+    let originX = 50;
+    let originY = 300; 
+    let maxQ = 1000;
+    let maxY = 45000;
+
+    // Controladores (Handles) para arrastrar
+    // Ubicamos los nodos de Precio y Costo Variable en q = 600
+    const HANDLE_Q = 600; 
+    let handles = [];
+    let draggingHandle = null;
+
+    // Cambiar valores por botones
+    window.changeVal = function(varName, delta) {
+        if(varName === 'P') { P = Math.max(1, P + delta); inputP.value = P; }
+        if(varName === 'Cv') { Cv = Math.max(0, Cv + delta); inputCv.value = Cv; }
+        if(varName === 'Cf') { Cf = Math.max(0, Cf + delta); inputCf.value = Cf; }
+        updateMath();
+    };
+
+    // Actualizar matemáticas desde inputs
+    function updateFromInputs() {
+        P = parseFloat(inputP.value) || 0;
+        Cv = parseFloat(inputCv.value) || 0;
+        Cf = parseFloat(inputCf.value) || 0;
+        updateMath();
+    }
+
+    [inputP, inputCv, inputCf].forEach(el => el.addEventListener('input', updateFromInputs));
+
+    function updateMath() {
+        // Auto-escala básica si los valores crecen mucho
+        if(P * 800 > maxY || Cv * 800 + Cf > maxY) maxY += 10000;
+        if(P * 500 < maxY/3 && maxY > 45000) maxY -= 10000;
+
+        document.getElementById('eq-c-text').innerText = `${Math.round(Cv)}q + ${Math.round(Cf)}`;
+        document.getElementById('eq-i-text').innerText = `${Math.round(P)}q`;
+        
+        let margen = P - Cv;
+        let signoCf = Cf > 0 ? `- ${Math.round(Cf)}` : `+ ${Math.abs(Math.round(Cf))}`;
+        document.getElementById('eq-u-text').innerText = `${Math.round(margen)}q ${signoCf}`;
+
+        if (margen > 0) {
+            let qEq = Cf / margen;
+            document.getElementById('equilibrio-text').innerText = `${Math.ceil(qEq)} unidades`;
+        } else {
+            document.getElementById('equilibrio-text').innerText = "Imposible (Costo > Precio)";
+        }
+
+        // Actualizar posiciones lógicas de los handles
+        handles = [
+            { id: 'Cf', q: 0, y: Cf, color: '#EF4444', label: 'C. Fijo' },
+            { id: 'Cv', q: HANDLE_Q, y: (Cv * HANDLE_Q) + Cf, color: '#EF4444', label: 'C. Variable' },
+            { id: 'P',  q: HANDLE_Q, y: P * HANDLE_Q, color: '#3B82F6', label: 'Precio' }
+        ];
+
+        drawChart();
+    }
+
+    // Conversión de coordenadas
+    function getCoords(q, y) {
+        let xCanvas = originX + (q / maxQ) * (canvas.width - originX - 30);
+        let yCanvas = originY - (y / Math.max(maxY, 1)) * (originY - 30);
+        return { cx: xCanvas, cy: yCanvas };
+    }
+    function mathYFromCanvas(cy) {
+        return ((originY - cy) / (originY - 30)) * maxY;
+    }
+
+    function drawChart() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Ejes X e Y
+        ctx.strokeStyle = '#9CA3AF';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(originX, 10); ctx.lineTo(originX, canvas.height - 10); 
+        ctx.moveTo(10, originY); ctx.lineTo(canvas.width - 10, originY); 
+        ctx.stroke();
+        
+        function trazarLinea(funcY, color, isDashed = false) {
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            if(isDashed) ctx.setLineDash([6, 6]); else ctx.setLineDash([]);
+            
+            let p1 = getCoords(0, funcY(0));
+            let p2 = getCoords(maxQ, funcY(maxQ));
+            
+            ctx.moveTo(p1.cx, p1.cy);
+            ctx.lineTo(p2.cx, p2.cy);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Trazar Funciones
+        trazarLinea(q => Cv * q + Cf, '#EF4444'); // Costo
+        trazarLinea(q => P * q, '#3B82F6');       // Ingreso
+        trazarLinea(q => (P - Cv) * q - Cf, '#10B981'); // Utilidad
+        trazarLinea(q => 0, '#D1D5DB', true); // Eje 0 utilidad
+
+        // Etiquetas Ejes
+        ctx.fillStyle = '#6B7280';
+        ctx.font = '12px sans-serif';
+        ctx.fillText("Cant (q)", canvas.width - 60, originY - 10);
+        ctx.fillText("S/.", originX + 10, 20);
+
+        // Dibujar Handles (nodos de control)
+        handles.forEach(h => {
+            let pos = getCoords(h.q, h.y);
+            h.cx = pos.cx;
+            h.cy = pos.cy;
+
+            ctx.beginPath();
+            ctx.arc(h.cx, h.cy, draggingHandle && draggingHandle.id === h.id ? 10 : 7, 0, Math.PI * 2);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = h.color;
+            ctx.stroke();
+        });
+    }
+
+    // --- LÓGICA DE INTERACCIÓN (MOUSE / TOUCH) ---
+    function getMousePos(evt) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+        const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function handleDown(evt) {
+        const pos = getMousePos(evt);
+        // Verificar si clickeamos un handle
+        draggingHandle = handles.find(h => Math.hypot(h.cx - pos.x, h.cy - pos.y) < 15);
+        if(draggingHandle) {
+            evt.preventDefault();
+            tooltip.style.display = 'none';
+            canvas.style.cursor = 'grabbing';
+            drawChart();
+        }
+    }
+
+    function handleMove(evt) {
+        const pos = getMousePos(evt);
+        
+        if (draggingHandle) {
+            evt.preventDefault();
+            let newMathY = Math.max(0, mathYFromCanvas(pos.y)); // No permitir negativos
+            
+            // Actualizar la variable correspondiente según el handle arrastrado
+            if (draggingHandle.id === 'Cf') {
+                Cf = newMathY;
+            } else if (draggingHandle.id === 'P') {
+                P = newMathY / HANDLE_Q;
+            } else if (draggingHandle.id === 'Cv') {
+                // Costo = Cv*q + Cf  =>  Cv = (Costo - Cf)/q
+                let newCv = (newMathY - Cf) / HANDLE_Q;
+                Cv = Math.max(0, newCv); 
+            }
+            
+            // Actualizar UI HTML
+            inputP.value = Math.round(P);
+            inputCv.value = Math.round(Cv);
+            inputCf.value = Math.round(Cf);
+            
+            updateMath(); // Redibuja y recalcula ecuaciones
+            return;
+        }
+
+        // Si no estamos arrastrando, hacer efecto Hover (Tooltip)
+        canvas.style.cursor = handles.some(h => Math.hypot(h.cx - pos.x, h.cy - pos.y) < 15) ? 'grab' : 'crosshair';
+
+        if (pos.x >= originX && pos.x <= canvas.width - 20) {
+            drawChart(); // Limpiar
+            let qHover = ((pos.x - originX) / (canvas.width - originX - 30)) * maxQ;
+            qHover = Math.max(0, Math.round(qHover));
+
+            let costo = Cv * qHover + Cf;
+            let ingreso = P * qHover;
+            let utilidad = ingreso - costo;
+
+            // Línea guía
+            let pInfo = getCoords(qHover, 0);
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+            ctx.moveTo(pInfo.cx, 10); ctx.lineTo(pInfo.cx, canvas.height - 10);
+            ctx.stroke(); ctx.setLineDash([]);
+
+            tooltip.style.display = 'block';
+            tooltip.style.left = (pos.x + 15) + 'px';
+            tooltip.style.top = '20px';
+            tooltip.innerHTML = `
+                <b>q = ${qHover}</b><br>
+                <span style="color:#3B82F6">Ingreso: S/. ${Math.round(ingreso)}</span><br>
+                <span style="color:#EF4444">Costo: S/. ${Math.round(costo)}</span><br>
+                <hr style="margin:4px 0; border:0; border-top:1px solid #ddd;">
+                <span style="color:${utilidad >= 0 ? '#10B981' : '#EF4444'}">
+                    <b>Utilidad: S/. ${Math.round(utilidad)}</b>
+                </span>
+            `;
+        } else {
+            tooltip.style.display = 'none';
+            drawChart();
+        }
+    }
+
+    function handleUp() {
+        if(draggingHandle) {
+            draggingHandle = null;
+            canvas.style.cursor = 'default';
+            drawChart();
+        }
+    }
+
+    canvas.addEventListener('mousedown', handleDown);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+
+    canvas.addEventListener('touchstart', handleDown, {passive: false});
+    window.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('touchend', handleUp);
+    canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; handleUp(); });
+
+    // Iniciar
+    updateMath();
+</script>
+</body>
+</html>
