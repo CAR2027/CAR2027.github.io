@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artefacto Interactivo: Pendiente de una Recta</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --secondary: #10B981;
+            --bg: #F3F4F6;
+            --panel-bg: #FFFFFF;
+            --text: #1F2937;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1000px;
+            width: 100%;
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .canvas-container {
+            flex: 1 1 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas {
+            background-color: #FAFAFA;
+            border: 1px solid #D1D5DB;
+            border-radius: 8px;
+            cursor: grab;
+            touch-action: none; /* Evita que la pantalla haga scroll al arrastrar en móviles */
+            max-width: 100%;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+        .panel {
+            flex: 1 1 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        h2 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+        .control-group {
+            background: var(--bg);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .point-inputs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .point-inputs label {
+            font-weight: bold;
+            width: 80px;
+        }
+        input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #D1D5DB;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .math-box {
+            background: #EFF6FF;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 1.1em;
+            line-height: 1.8;
+        }
+        .math-step {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .fraction {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 10px;
+            vertical-align: middle;
+        }
+        .numerator {
+            border-bottom: 2px solid var(--text);
+            padding: 0 5px;
+        }
+        .denominator {
+            padding: 0 5px;
+        }
+        .highlight-y { color: var(--secondary); font-weight: bold; }
+        .highlight-x { color: var(--primary); font-weight: bold; }
+        p.instruction {
+            font-size: 0.9em;
+            color: #6B7280;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="canvas-container">
+        <canvas id="graphCanvas" width="450" height="450"></canvas>
+        <p class="instruction">Toca y arrastra los puntos P y Q en la cuadrícula.</p>
+    </div>
+
+    <div class="panel">
+        <h2>Calculadora de Pendiente</h2>
+        <p>Modifica los valores o arrastra los puntos para ver cómo se calcula la pendiente <b>m</b> paso a paso.</p>
+        
+        <div class="control-group">
+            <div class="point-inputs">
+                <label style="color: var(--primary);">Punto P (x₁, y₁)</label>
+                X: <input type="number" id="p_x" value="1" step="1">
+                Y: <input type="number" id="p_y" value="2" step="1">
+            </div>
+            <div class="point-inputs">
+                <label style="color: var(--secondary);">Punto Q (x₂, y₂)</label>
+                X: <input type="number" id="q_x" value="2" step="1">
+                Y: <input type="number" id="q_y" value="5" step="1">
+            </div>
+        </div>
+
+        <div class="math-box">
+            <b>Fórmula:</b>
+            <div class="math-step">
+                m = <div class="fraction">
+                    <span class="numerator">y₂ - y₁</span>
+                    <span class="denominator">x₂ - x₁</span>
+                </div>
+            </div>
+            <b>Cálculo:</b>
+            <div class="math-step">
+                m = <div class="fraction">
+                    <span class="numerator" id="calc-num-sub">5 - 2</span>
+                    <span class="denominator" id="calc-den-sub">2 - 1</span>
+                </div>
+                = <div class="fraction">
+                    <span class="numerator highlight-y" id="calc-num-res">3</span>
+                    <span class="denominator highlight-x" id="calc-den-res">1</span>
+                </div>
+                = <strong id="calc-final" style="margin-left: 5px;">3</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Configuración del plano cartesiano
+    const gridSize = 30; // Píxeles por unidad
+    const originX = canvas.width / 2;
+    const originY = canvas.height / 2;
+
+    // Estado inicial
+    let P = { x: 1, y: 2, radius: 8, color: '#4F46E5', name: 'P' };
+    let Q = { x: 2, y: 5, radius: 8, color: '#10B981', name: 'Q' };
+    let draggingPoint = null;
+
+    // Elementos del DOM
+    const inputPx = document.getElementById('p_x');
+    const inputPy = document.getElementById('p_y');
+    const inputQx = document.getElementById('q_x');
+    const inputQy = document.getElementById('q_y');
+
+    // Función para convertir coordenadas matemáticas a píxeles del canvas
+    function mathToCanvas(x, y) {
+        return {
+            cx: originX + x * gridSize,
+            cy: originY - y * gridSize
+        };
+    }
+
+    // Función para convertir píxeles del canvas a coordenadas matemáticas
+    function canvasToMath(cx, cy) {
+        return {
+            x: Math.round((cx - originX) / gridSize),
+            y: Math.round((originY - cy) / gridSize)
+        };
+    }
+
+    // Dibujar la cuadrícula y los ejes
+    function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 1;
+        
+        // Líneas menores
+        ctx.strokeStyle = '#E5E7EB';
+        for (let i = 0; i < canvas.width; i += gridSize) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+
+        // Ejes X e Y
+        ctx.strokeStyle = '#9CA3AF';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height); ctx.stroke(); // Eje Y
+        ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY); ctx.stroke(); // Eje X
+
+        // Etiquetas de ejes
+        ctx.fillStyle = '#6B7280';
+        ctx.font = '12px sans-serif';
+        for(let i = -7; i <= 7; i++) {
+            if(i !== 0) {
+                ctx.fillText(i, originX + i * gridSize - 5, originY + 15); // X
+                ctx.fillText(i, originX - 20, originY - i * gridSize + 5); // Y
+            }
+        }
+    }
+
+    // Dibujar los elementos interactivos (línea, triángulo, puntos)
+    function draw() {
+        drawGrid();
+
+        const pCanvas = mathToCanvas(P.x, P.y);
+        const qCanvas = mathToCanvas(Q.x, Q.y);
+
+        // Dibujar el triángulo rectángulo para visualizar la elevación y el avance
+        ctx.beginPath();
+        ctx.setLineDash([5, 5]);
+        ctx.moveTo(pCanvas.cx, pCanvas.cy);
+        ctx.lineTo(qCanvas.cx, pCanvas.cy); // Avance (horizontal)
+        ctx.lineTo(qCanvas.cx, qCanvas.cy); // Elevación (vertical)
+        ctx.strokeStyle = '#9CA3AF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Etiquetas de incremento
+        ctx.fillStyle = '#10B981'; // Color para Y
+        ctx.fillText(`Δy = ${Q.y - P.y}`, qCanvas.cx + 10, (pCanvas.cy + qCanvas.cy) / 2);
+        ctx.fillStyle = '#4F46E5'; // Color para X
+        ctx.fillText(`Δx = ${Q.x - P.x}`, (pCanvas.cx + qCanvas.cx) / 2, pCanvas.cy + 20);
+
+        // Dibujar la recta infinita que pasa por P y Q
+        ctx.beginPath();
+        ctx.strokeStyle = '#1F2937';
+        ctx.lineWidth = 2;
+        
+        // Calcular puntos lejanos para la recta
+        const dx = Q.x - P.x;
+        const dy = Q.y - P.y;
+        
+        if (dx === 0 && dy === 0) return; // Si los puntos son iguales, no dibujar recta
+        
+        const extend = 20; // Extender más allá del canvas
+        const p1 = mathToCanvas(P.x - dx * extend, P.y - dy * extend);
+        const p2 = mathToCanvas(Q.x + dx * extend, Q.y + dy * extend);
+        
+        ctx.moveTo(p1.cx, p1.cy);
+        ctx.lineTo(p2.cx, p2.cy);
+        ctx.stroke();
+
+        // Dibujar puntos P y Q
+        [P, Q].forEach(point => {
+            const ptCanvas = mathToCanvas(point.x, point.y);
+            ctx.beginPath();
+            ctx.arc(ptCanvas.cx, ptCanvas.cy, point.radius, 0, Math.PI * 2);
+            ctx.fillStyle = point.color;
+            ctx.fill();
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Etiqueta del punto
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText(`${point.name}(${point.x}, ${point.y})`, ptCanvas.cx - 20, ptCanvas.cy - 15);
+        });
+
+        updateMathPanel();
+    }
+
+    // Actualizar los textos y cálculos en el panel HTML
+    function updateMathPanel() {
+        // Actualizar inputs
+        inputPx.value = P.x; inputPy.value = P.y;
+        inputQx.value = Q.x; inputQy.value = Q.y;
+
+        const dy = Q.y - P.y;
+        const dx = Q.x - P.x;
+
+        document.getElementById('calc-num-sub').innerText = `${Q.y} - ${P.y < 0 ? `(${P.y})` : P.y}`;
+        document.getElementById('calc-den-sub').innerText = `${Q.x} - ${P.x < 0 ? `(${P.x})` : P.x}`;
+        
+        document.getElementById('calc-num-res').innerText = dy;
+        document.getElementById('calc-den-res').innerText = dx;
+
+        const finalResult = document.getElementById('calc-final');
+        if (dx === 0) {
+            finalResult.innerText = 'Indefinida (Recta Vertical)';
+            finalResult.style.color = '#EF4444';
+        } else {
+            const m = dy / dx;
+            // Mostrar número entero o decimal con máximo 2 decimales
+            finalResult.innerText = Number.isInteger(m) ? m : m.toFixed(2);
+            finalResult.style.color = '#1F2937';
+        }
+    }
+
+    // Actualizar coordenadas desde los inputs
+    function updateFromInputs() {
+        P.x = parseInt(inputPx.value) || 0; P.y = parseInt(inputPy.value) || 0;
+        Q.x = parseInt(inputQx.value) || 0; Q.y = parseInt(inputQy.value) || 0;
+        draw();
+    }
+
+    [inputPx, inputPy, inputQx, inputQy].forEach(input => {
+        input.addEventListener('input', updateFromInputs);
+    });
+
+    // Lógica para arrastrar y soltar (Mouse y Touch)
+    function getMousePos(evt) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+        const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
+
+    function handleDown(evt) {
+        evt.preventDefault();
+        const pos = getMousePos(evt);
+        
+        [P, Q].forEach(point => {
+            const ptCanvas = mathToCanvas(point.x, point.y);
+            const dist = Math.hypot(pos.x - ptCanvas.cx, pos.y - ptCanvas.cy);
+            if (dist <= point.radius + 10) { // +10px de área de tolerancia para móviles
+                draggingPoint = point;
+            }
+        });
+    }
+
+    function handleMove(evt) {
+        if (!draggingPoint) return;
+        evt.preventDefault();
+        const pos = getMousePos(evt);
+        const mathPos = canvasToMath(pos.x, pos.y);
+        
+        // Limitar dentro del rango visible (-7 a 7 aprox)
+        draggingPoint.x = Math.max(-7, Math.min(7, mathPos.x));
+        draggingPoint.y = Math.max(-7, Math.min(7, mathPos.y));
+        draw();
+    }
+
+    function handleUp() {
+        draggingPoint = null;
+    }
+
+    // Eventos Mouse
+    canvas.addEventListener('mousedown', handleDown);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+
+    // Eventos Touch (Móviles)
+    canvas.addEventListener('touchstart', handleDown, {passive: false});
+    window.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('touchend', handleUp);
+
+    // Inicializar
+    draw();
+</script>
+</body>
+</html>
