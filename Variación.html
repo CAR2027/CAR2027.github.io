@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Función de Producción y Variación Porcentual</title>
+    <style>
+        :root {
+            --primary: #2563EB;
+            --initial: #3B82F6; /* Azul claro */
+            --final: #10B981;   /* Verde */
+            --delta: #F59E0B;   /* Naranja */
+            --bg: #F8FAFC;
+            --panel: #FFFFFF;
+            --text: #1E293B;
+            --border: #E2E8F0;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1100px;
+            width: 100%;
+            background: var(--panel);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        }
+        .visual-panel {
+            flex: 1 1 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        canvas {
+            width: 100%;
+            background-color: #FAFAFA;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .control-panel {
+            flex: 1 1 350px;
+            background: var(--bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        h2 { margin-top: 0; color: var(--primary); font-size: 1.4em; }
+        
+        .input-group {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .input-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .input-row label { font-weight: bold; font-size: 0.9em; flex: 1; }
+        input[type="number"] {
+            width: 90px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-weight: bold;
+            text-align: center;
+            font-size: 1em;
+        }
+
+        .step-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            font-size: 0.95em;
+        }
+        .step-box h4 { margin: 0 0 10px 0; color: var(--text); display: flex; align-items: center; gap: 8px; }
+        
+        .math-text {
+            font-family: monospace;
+            font-size: 1.1em;
+            background: #F1F5F9;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        
+        .highlight-init { color: var(--initial); font-weight: bold; }
+        .highlight-fin { color: var(--final); font-weight: bold; }
+        .highlight-delta { color: var(--delta); font-weight: bold; font-size: 1.2em; }
+
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            h2 { font-size: 1.2em; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="visual-panel">
+        <div style="text-align: center; font-size: 1.1em; font-weight: bold;">
+            Curva de Producción: P(L) = <span id="eq-k">1200</span>&radic;L
+        </div>
+        <!-- Gráfica -->
+        <canvas id="prodCanvas" width="600" height="400"></canvas>
+        <p style="font-size: 0.85em; color: #64748B; text-align: center; margin: 0;">
+            El eje horizontal representa las horas-hombre (L) y el vertical la producción (P).
+        </p>
+    </div>
+
+    <div class="control-panel">
+        <h2>Análisis de Incremento</h2>
+        
+        <div class="input-group">
+            <div class="input-row">
+                <label>Constante (k):</label>
+                <input type="number" id="val-k" value="1200" min="100" step="100">
+            </div>
+            <div class="input-row">
+                <label>Horas Iniciales (L&#8321;):</label>
+                <input type="number" id="val-l1" value="100" min="1">
+            </div>
+            <div class="input-row">
+                <label>Horas Finales (L&#8322;):</label>
+                <input type="number" id="val-l2" value="121" min="1">
+            </div>
+        </div>
+
+        <div class="step-box" style="border-left-color: var(--initial);">
+            <h4>1. Producción Inicial</h4>
+            <div class="math-text">
+                P(<span class="highlight-init" id="txt-l1">100</span>) = <span id="txt-k1">1200</span>&radic;<span id="txt-l1-sq">100</span>
+            </div>
+            <div style="text-align: center;">P&#8321; = <span class="highlight-init" id="res-p1">12000</span> unidades</div>
+        </div>
+
+        <div class="step-box" style="border-left-color: var(--final);">
+            <h4>2. Producción Final</h4>
+            <div class="math-text">
+                P(<span class="highlight-fin" id="txt-l2">121</span>) = <span id="txt-k2">1200</span>&radic;<span id="txt-l2-sq">121</span>
+            </div>
+            <div style="text-align: center;">P&#8322; = <span class="highlight-fin" id="res-p2">13200</span> unidades</div>
+        </div>
+
+        <div class="step-box" style="border-left-color: var(--delta); background-color: #FFFBEB;">
+            <h4 id="lbl-variation">3. Aumento Porcentual</h4>
+            <div class="math-text" style="background: white; border: 1px solid #FDE68A;">
+                % = [ (P&#8322; - P&#8321;) / P&#8321; ] &times; 100
+            </div>
+            <div style="text-align: center; margin-top: 10px;">
+                Variación real: <span id="res-delta">1200</span> unidades<br>
+                Resultado: <span class="highlight-delta" id="res-percent">10.00%</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- ELEMENTOS DEL DOM ---
+    const canvas = document.getElementById('prodCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const inputK = document.getElementById('val-k');
+    const inputL1 = document.getElementById('val-l1');
+    const inputL2 = document.getElementById('val-l2');
+
+    // --- VARIABLES LÓGICAS ---
+    let K = 1200;
+    let L1 = 100;
+    let L2 = 121;
+
+    // --- FUNCIÓN DE DIBUJO ---
+    function drawChart(p1, p2, maxL, maxP) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const originX = 50;
+        const originY = canvas.height - 40;
+        const width = canvas.width - originX - 20;
+        const height = originY - 20;
+
+        function mapX(l) { return originX + (l / maxL) * width; }
+        function mapY(p) { return originY - (p / maxP) * height; }
+
+        // Cuadrícula y Ejes
+        ctx.strokeStyle = '#E2E8F0';
+        ctx.lineWidth = 1;
+        // Líneas horizontales
+        for(let i = 0; i <= 5; i++) {
+            let pVal = (maxP / 5) * i;
+            let y = mapY(pVal);
+            ctx.beginPath(); ctx.moveTo(originX, y); ctx.lineTo(canvas.width - 20, y); ctx.stroke();
+            ctx.fillStyle = '#94A3B8'; ctx.font = '10px sans-serif';
+            ctx.fillText(Math.round(pVal), 5, y + 4);
+        }
+        // Ejes principales
+        ctx.strokeStyle = '#64748B'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(originX, 10); ctx.lineTo(originX, originY); ctx.stroke(); // Y
+        ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(canvas.width - 10, originY); ctx.stroke(); // X
+
+        // Dibujar Curva P(L) = K * sqrt(L)
+        ctx.beginPath();
+        ctx.strokeStyle = '#2563EB';
+        ctx.lineWidth = 3;
+        ctx.moveTo(mapX(0), mapY(0));
+        for (let l = 1; l <= maxL; l += maxL/100) {
+            ctx.lineTo(mapX(l), mapY(K * Math.sqrt(l)));
+        }
+        ctx.stroke();
+
+        // Función para marcar puntos
+        function drawPoint(l, p, color, label) {
+            let cx = mapX(l);
+            let cy = mapY(p);
+            
+            // Líneas punteadas
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 1.5;
+            ctx.moveTo(cx, originY); ctx.lineTo(cx, cy); // Vertical
+            ctx.moveTo(originX, cy); ctx.lineTo(cx, cy); // Horizontal
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Punto
+            ctx.beginPath();
+            ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Texto Eje X
+            ctx.fillStyle = color;
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillText(`L=${l}`, cx - 15, originY + 15);
+        }
+
+        // Marcar L1 y L2
+        drawPoint(L1, p1, '#3B82F6', 'L1'); // Azul
+        drawPoint(L2, p2, '#10B981', 'L2'); // Verde
+    }
+
+    // --- FUNCIÓN DE ACTUALIZACIÓN MATEMÁTICA ---
+    function updateMath() {
+        K = parseFloat(inputK.value) || 0;
+        L1 = parseFloat(inputL1.value) || 0;
+        if(L1 <= 0) { L1 = 1; inputL1.value = 1; } // Evitar división por cero
+        L2 = parseFloat(inputL2.value) || 0;
+
+        let P1 = K * Math.sqrt(L1);
+        let P2 = K * Math.sqrt(L2);
+        let delta = P2 - P1;
+        let porcentaje = (delta / P1) * 100;
+
+        // Actualizar Textos
+        document.getElementById('eq-k').innerText = K;
+        
+        document.getElementById('txt-l1').innerText = L1;
+        document.getElementById('txt-l1-sq').innerText = L1;
+        document.getElementById('txt-k1').innerText = K;
+        document.getElementById('res-p1').innerText = P1.toFixed(2);
+
+        document.getElementById('txt-l2').innerText = L2;
+        document.getElementById('txt-l2-sq').innerText = L2;
+        document.getElementById('txt-k2').innerText = K;
+        document.getElementById('res-p2').innerText = P2.toFixed(2);
+
+        document.getElementById('res-delta').innerText = (delta > 0 ? "+" : "") + delta.toFixed(2);
+        
+        let elPercent = document.getElementById('res-percent');
+        elPercent.innerText = (porcentaje > 0 ? "+" : "") + porcentaje.toFixed(2) + "%";
+        
+        let lblVar = document.getElementById('lbl-variation');
+        if(porcentaje >= 0) {
+            lblVar.innerText = "3. Aumento Porcentual";
+            elPercent.style.color = "#F59E0B"; // Naranja
+        } else {
+            lblVar.innerText = "3. Disminución Porcentual";
+            elPercent.style.color = "#EF4444"; // Rojo
+        }
+
+        // Escalar Canvas
+        let maxL = Math.max(L1, L2) * 1.2;
+        let maxP = K * Math.sqrt(maxL);
+        drawChart(P1, P2, maxL, maxP);
+    }
+
+    // --- EVENTOS ---
+    inputK.addEventListener('input', updateMath);
+    inputL1.addEventListener('input', updateMath);
+    inputL2.addEventListener('input', updateMath);
+
+    // Inicializar
+    updateMath();
+</script>
+</body>
+</html>
