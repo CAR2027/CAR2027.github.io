@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graficador de Funciones Lineales</title>
+    <style>
+        :root {
+            --primary: #3B82F6;
+            --secondary: #F59E0B;
+            --bg: #F9FAFB;
+            --panel: #FFFFFF;
+            --text: #1F2937;
+            --grid: #E5E7EB;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
+            background: var(--panel);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .canvas-section {
+            flex: 1 1 350px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas {
+            background-color: #FFFFFF;
+            border: 2px solid #D1D5DB;
+            border-radius: 12px;
+            max-width: 100%;
+            touch-action: none;
+        }
+        .controls-section {
+            flex: 1 1 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        h2 {
+            margin: 0;
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            flex: 1;
+            font-size: 1rem;
+        }
+        button:hover { opacity: 0.9; }
+        button.alt { background-color: var(--secondary); }
+        
+        .slider-group {
+            background: var(--bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--grid);
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .slider-row label { font-weight: bold; width: 150px;}
+        .slider-row span { font-weight: bold; color: var(--primary); width: 30px; text-align: right;}
+        input[type="range"] {
+            flex: 1;
+            margin: 0 15px;
+            cursor: pointer;
+        }
+        
+        .explanation-box {
+            background: #EFF6FF;
+            border-left: 5px solid var(--primary);
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 1.1rem;
+        }
+        .math-text { font-family: 'Courier New', Courier, monospace; font-weight: bold; font-size: 1.3rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="canvas-section">
+        <canvas id="cartesian" width="400" height="400"></canvas>
+        <p style="color: #6B7280; font-size: 0.9rem; text-align: center;">El plano muestra desde -10 hasta 10 en ambos ejes.</p>
+    </div>
+
+    <div class="controls-section">
+        <h2>Casos de Estudio</h2>
+        <div class="preset-buttons">
+            <button onclick="setEquation(2, 5)">Caso 1: f(x) = 2x + 5</button>
+            <button class="alt" onclick="setEquation(0, 2)">Caso 2: f(x) = 2</button>
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-row">
+                <label>Pendiente (m):</label>
+                <input type="range" id="slope" min="-5" max="5" step="0.5" value="2">
+                <span id="slope-val">2</span>
+            </div>
+            <div class="slider-row">
+                <label>Intersección Y (b):</label>
+                <input type="range" id="intercept" min="-10" max="10" step="1" value="5">
+                <span id="intercept-val">5</span>
+            </div>
+        </div>
+
+        <div class="explanation-box">
+            <div>Función actual:</div>
+            <div class="math-text" id="equation-display">f(x) = 2x + 5</div>
+            <p id="text-explanation" style="margin-bottom: 0; font-size: 0.95rem;"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('cartesian');
+    const ctx = canvas.getContext('2d');
+    
+    // Configuración del plano
+    const gridSize = 20; // 20 píxeles por unidad (para mostrar de -10 a 10 en 400px)
+    const originX = canvas.width / 2;
+    const originY = canvas.height / 2;
+
+    // Controles
+    const slopeSlider = document.getElementById('slope');
+    const interceptSlider = document.getElementById('intercept');
+    const slopeVal = document.getElementById('slope-val');
+    const interceptVal = document.getElementById('intercept-val');
+    const eqDisplay = document.getElementById('equation-display');
+    const textExpl = document.getElementById('text-explanation');
+
+    let m = parseFloat(slopeSlider.value);
+    let b = parseFloat(interceptSlider.value);
+
+    // Convertir coordenadas matemáticas a Canvas
+    function mathToCanvas(x, y) {
+        return {
+            cx: originX + (x * gridSize),
+            cy: originY - (y * gridSize)
+        };
+    }
+
+    function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Cuadrícula fina
+        ctx.strokeStyle = '#E5E7EB';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= canvas.width; i += gridSize) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+
+        // Ejes X e Y
+        ctx.strokeStyle = '#9CA3AF';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY); ctx.stroke();
+
+        // Números en los ejes
+        ctx.fillStyle = '#6B7280';
+        ctx.font = '10px sans-serif';
+        for(let i = -10; i <= 10; i+=2) {
+            if(i !== 0) {
+                // Eje X
+                ctx.fillText(i, originX + (i * gridSize) - 5, originY + 15);
+                // Eje Y
+                ctx.fillText(i, originX - 20, originY - (i * gridSize) + 3);
+            }
+        }
+    }
+
+    function drawFunction() {
+        drawGrid();
+
+        // Calcular dos puntos lejanos para trazar la recta
+        const x1 = -10;
+        const y1 = (m * x1) + b;
+        const x2 = 10;
+        const y2 = (m * x2) + b;
+
+        const p1 = mathToCanvas(x1, y1);
+        const p2 = mathToCanvas(x2, y2);
+
+        // Dibujar la recta
+        ctx.beginPath();
+        ctx.strokeStyle = '#3B82F6';
+        ctx.lineWidth = 3;
+        ctx.moveTo(p1.cx, p1.cy);
+        ctx.lineTo(p2.cx, p2.cy);
+        ctx.stroke();
+
+        // Dibujar y resaltar la intersección Y (b)
+        const yIntercept = mathToCanvas(0, b);
+        ctx.beginPath();
+        ctx.arc(yIntercept.cx, yIntercept.cy, 6, 0, Math.PI * 2);
+        ctx.fillStyle = '#EF4444'; // Rojo para destacar
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Etiqueta de la intersección
+        ctx.fillStyle = '#1F2937';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(`(0, ${b})`, yIntercept.cx + 10, yIntercept.cy - 10);
+
+        // Si hay pendiente, dibujar un triángulo de ejemplo para visualizar 'm'
+        if (m !== 0) {
+            const stepX = 1; // Avanzar 1 unidad
+            const stepY = m; // Subir/bajar 'm' unidades
+            
+            // Usar un punto visible en el plano (ej: origen de intersección)
+            const pt1 = mathToCanvas(0, b);
+            const pt2 = mathToCanvas(stepX, b);
+            const pt3 = mathToCanvas(stepX, b + stepY);
+
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = '#F59E0B'; // Naranja
+            ctx.lineWidth = 2;
+            
+            ctx.moveTo(pt1.cx, pt1.cy);
+            ctx.lineTo(pt2.cx, pt2.cy); // Avance horizontal
+            ctx.lineTo(pt3.cx, pt3.cy); // Avance vertical
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+    }
+
+    function updateUI() {
+        slopeVal.textContent = m;
+        interceptVal.textContent = b;
+
+        // Formatear la ecuación para que se vea bien
+        let equation = 'f(x) = ';
+        if (m === 0) {
+            equation += `${b}`;
+        } else {
+            equation += m === 1 ? 'x' : (m === -1 ? '-x' : `${m}x`);
+            if (b > 0) equation += ` + ${b}`;
+            else if (b < 0) equation += ` - ${Math.abs(b)}`;
+        }
+        eqDisplay.textContent = equation;
+
+        // Generar texto explicativo dinámico
+        if (m === 0) {
+            textExpl.innerHTML = `Como la pendiente es <b>0</b>, es una línea horizontal. Corta el eje vertical exactamente en <b>${b}</b>.`;
+        } else {
+            const direction = m > 0 ? "sube" : "baja";
+            textExpl.innerHTML = `La recta corta el eje vertical en <b>${b}</b>. A partir de ahí, por cada unidad que avanzas a la derecha, la recta <b>${direction} ${Math.abs(m)}</b> unidades.`;
+        }
+
+        drawFunction();
+    }
+
+    // Eventos de los sliders
+    slopeSlider.addEventListener('input', (e) => {
+        m = parseFloat(e.target.value);
+        updateUI();
+    });
+
+    interceptSlider.addEventListener('input', (e) => {
+        b = parseFloat(e.target.value);
+        updateUI();
+    });
+
+    // Función llamada por los botones
+    window.setEquation = function(newM, newB) {
+        m = newM;
+        b = newB;
+        slopeSlider.value = m;
+        interceptSlider.value = b;
+        updateUI();
+    };
+
+    // Inicializar
+    updateUI();
+</script>
+</body>
+</html>
