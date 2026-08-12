@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artefacto Interactivo: Definición de Función</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-light: #E0E7FF;
+            --domain: #F59E0B;
+            --range: #10B981;
+            --bg: #F8FAFC;
+            --panel: #FFFFFF;
+            --text: #1E293B;
+            --border: #E2E8F0;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
+            background: var(--panel);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        }
+        .visual-panel {
+            flex: 1 1 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .control-panel {
+            flex: 1 1 300px;
+            background: var(--bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        h2 { margin-top: 0; color: var(--primary); font-size: 1.4em; }
+        
+        /* Estilos del conjunto */
+        .set-box {
+            font-size: 1.3em;
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border: 2px dashed var(--primary);
+            border-radius: 8px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .pair { display: inline-block; padding: 2px 6px; border-radius: 4px; transition: 0.3s; }
+        .highlight-b { background-color: rgba(245, 158, 11, 0.3); outline: 2px solid var(--domain); }
+        .highlight-a { background-color: rgba(16, 185, 129, 0.3); outline: 2px solid var(--range); }
+
+        /* Mapeo visual */
+        .mapping-diagram {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 20px 0;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        .set {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+            width: 100px;
+        }
+        .set-title { font-weight: bold; margin-bottom: 10px; }
+        .node {
+            width: 60px; height: 40px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        .node-x { background: #FEF3C7; color: #B45309; border: 2px solid #F59E0B; }
+        .node-y { background: #D1FAE5; color: #047857; border: 2px solid #10B981; }
+        .node-active { transform: scale(1.1); box-shadow: 0 0 10px rgba(0,0,0,0.2); }
+
+        /* Controles y Pasos */
+        .step-container {
+            background: white; padding: 15px; border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            min-height: 120px;
+        }
+        .step-buttons {
+            display: flex; gap: 10px; margin-top: 10px;
+        }
+        button {
+            background: var(--primary); color: white;
+            border: none; padding: 10px 15px; border-radius: 6px;
+            cursor: pointer; font-weight: bold; flex: 1;
+            transition: background 0.2s;
+        }
+        button:hover { background: #4338CA; }
+        button:disabled { background: #94A3B8; cursor: not-allowed; }
+        
+        .input-group { display: flex; flex-direction: column; gap: 10px; }
+        .input-row { display: flex; justify-content: space-between; align-items: center; }
+        input[type="number"] {
+            width: 80px; padding: 8px; border: 1px solid var(--border);
+            border-radius: 6px; font-weight: bold; text-align: center;
+        }
+
+        .math-eq { font-family: monospace; font-size: 1.2em; background: #F1F5F9; padding: 10px; border-radius: 6px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="visual-panel">
+        <div>
+            <h3 style="margin-top:0;">Conjunto de la función f:</h3>
+            <div class="set-box" id="function-set">
+                f = { <span class="pair" id="p1">(4; <span id="v-y1">3</span>)</span>, 
+                      <span class="pair" id="p2">(-7; a+b)</span>, 
+                      <span class="pair" id="p3">(4; b)</span>, 
+                      <span class="pair" id="p4">(-7; <span id="v-y2">5</span>)</span> }
+            </div>
+        </div>
+
+        <div class="mapping-diagram">
+            <div class="set">
+                <div class="set-title" style="color:#B45309">Dominio (x)</div>
+                <div class="node node-x" id="nx-4">4</div>
+                <div class="node node-x" id="nx-7">-7</div>
+            </div>
+            
+            <div style="font-size: 2em; color: #CBD5E1;">&#8594;</div>
+            
+            <div class="set">
+                <div class="set-title" style="color:#047857">Rango (y)</div>
+                <div class="node node-y" id="ny-y1">3</div>
+                <div class="node node-y" id="ny-b">b</div>
+                <div class="node node-y" id="ny-ab">a+b</div>
+                <div class="node node-y" id="ny-y2">5</div>
+            </div>
+        </div>
+
+        <div class="step-container">
+            <h3 id="step-title" style="margin-top:0; color: var(--primary);">Paso 1: Entender la regla</h3>
+            <div id="step-desc">
+                Para que un conjunto de pares ordenados sea una <b>función</b>, cada valor de <b>x</b> (Dominio) solo puede estar asociado a un único valor de <b>y</b> (Rango).<br><br>
+                Si observamos el conjunto, el número 4 y el número -7 se repiten en el dominio. ¡Debemos arreglar eso!
+            </div>
+        </div>
+    </div>
+
+    <div class="control-panel">
+        <h2>Panel de Control</h2>
+        <p style="font-size: 0.9em; color: #64748B;">Experimenta cambiando los valores del problema original para ver cómo se calculan "a" y "b".</p>
+        
+        <div class="input-group">
+            <div class="input-row">
+                <label>Valor de y para x=4:</label>
+                <input type="number" id="input-y1" value="3">
+            </div>
+            <div class="input-row">
+                <label>Valor de y para x=-7:</label>
+                <input type="number" id="input-y2" value="5">
+            </div>
+        </div>
+
+        <hr style="width: 100%; border: 0; border-top: 1px solid var(--border); margin: 15px 0;">
+
+        <div class="math-eq">
+            <div>a = <span id="res-a">?</span></div>
+            <div>b = <span id="res-b">?</span></div>
+        </div>
+
+        <div class="step-buttons">
+            <button id="btn-prev" onclick="changeStep(-1)" disabled>&#8592; Anterior</button>
+            <button id="btn-next" onclick="changeStep(1)">Siguiente &#8594;</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let step = 1;
+    let valY1 = 3;
+    let valY2 = 5;
+
+    // Elementos del DOM
+    const inputY1 = document.getElementById('input-y1');
+    const inputY2 = document.getElementById('input-y2');
+    const vy1 = document.getElementById('v-y1');
+    const vy2 = document.getElementById('v-y2');
+    const nyY1 = document.getElementById('ny-y1');
+    const nyY2 = document.getElementById('ny-y2');
+    const nyB = document.getElementById('ny-b');
+    const nyAB = document.getElementById('ny-ab');
+    const resA = document.getElementById('res-a');
+    const resB = document.getElementById('res-b');
+    
+    // Nodos para resaltar
+    const p1 = document.getElementById('p1');
+    const p3 = document.getElementById('p3');
+    const p2 = document.getElementById('p2');
+    const p4 = document.getElementById('p4');
+    const nx4 = document.getElementById('nx-4');
+    const nx7 = document.getElementById('nx-7');
+
+    function updateValues() {
+        valY1 = parseInt(inputY1.value) || 0;
+        valY2 = parseInt(inputY2.value) || 0;
+        
+        vy1.innerText = valY1;
+        vy2.innerText = valY2;
+        nyY1.innerText = valY1;
+        nyY2.innerText = valY2;
+        
+        renderStep();
+    }
+
+    inputY1.addEventListener('input', updateValues);
+    inputY2.addEventListener('input', updateValues);
+
+    function changeStep(dir) {
+        step += dir;
+        if(step < 1) step = 1;
+        if(step > 4) step = 4;
+        renderStep();
+    }
+
+    function clearHighlights() {
+        p1.className = 'pair'; p2.className = 'pair';
+        p3.className = 'pair'; p4.className = 'pair';
+        nx4.classList.remove('node-active'); nx7.classList.remove('node-active');
+        nyY1.classList.remove('node-active'); nyY2.classList.remove('node-active');
+        nyB.classList.remove('node-active'); nyAB.classList.remove('node-active');
+        
+        // Reset diagram layout
+        nyB.style.display = 'flex';
+        nyAB.style.display = 'flex';
+        nyY1.innerText = valY1;
+        nyY2.innerText = valY2;
+        resA.innerText = "?";
+        resB.innerText = "?";
+        resA.style.color = 'black';
+        resB.style.color = 'black';
+    }
+
+    function renderStep() {
+        document.getElementById('btn-prev').disabled = step === 1;
+        document.getElementById('btn-next').disabled = step === 4;
+        
+        clearHighlights();
+        
+        const title = document.getElementById('step-title');
+        const desc = document.getElementById('step-desc');
+        
+        let a = valY2 - valY1;
+        let b = valY1;
+
+        if (step === 1) {
+            title.innerText = "Paso 1: Entender la regla";
+            desc.innerHTML = `Para que un conjunto de pares ordenados sea una <b>función</b>, cada valor de <b>x</b> (Dominio) solo puede apuntar a un único valor de <b>y</b> (Rango).<br><br>
+            Mira el conjunto: el número <b>4</b> y el <b>-7</b> se repiten. Esto significa que las parejas que empiezan igual deben ser el mismo punto.`;
+        } 
+        else if (step === 2) {
+            title.innerText = "Paso 2: Igualar el dominio x = 4";
+            desc.innerHTML = `Observa los pares (4; ${valY1}) y (4; b). <br><br>
+            Como ambos tienen x=4, sus valores 'y' tienen que ser idénticos. Por lo tanto:<br>
+            <div style="text-align:center; font-size:1.2em; margin:10px; color:#B45309;"><b>b = ${valY1}</b></div>`;
+            
+            p1.classList.add('highlight-b');
+            p3.classList.add('highlight-b');
+            nx4.classList.add('node-active');
+            nyY1.classList.add('node-active');
+            nyB.classList.add('node-active');
+            
+            resB.innerText = b;
+            resB.style.color = '#B45309';
+        }
+        else if (step === 3) {
+            title.innerText = "Paso 3: Igualar el dominio x = -7";
+            desc.innerHTML = `Ahora observa los pares (-7; a+b) y (-7; ${valY2}). <br><br>
+            De igual manera, como ambos tienen x=-7, igualamos sus valores 'y':<br>
+            <div style="text-align:center; font-size:1.2em; margin:10px; color:#047857;"><b>a + b = ${valY2}</b></div>`;
+            
+            // Ya sabemos b
+            resB.innerText = b;
+            
+            p2.classList.add('highlight-a');
+            p4.classList.add('highlight-a');
+            nx7.classList.add('node-active');
+            nyY2.classList.add('node-active');
+            nyAB.classList.add('node-active');
+        }
+        else if (step === 4) {
+            title.innerText = "Paso 4: Resolver el sistema";
+            desc.innerHTML = `Ya sabemos que <b>b = ${valY1}</b> y que <b>a + b = ${valY2}</b>.<br><br>
+            Sustituimos el valor de 'b' en la ecuación:<br>
+            a + (${valY1}) = ${valY2} <br>
+            a = ${valY2} - ${valY1} <br>
+            <b>a = ${a}</b>`;
+            
+            resB.innerText = b;
+            resA.innerText = a;
+            resA.style.color = '#047857';
+            resB.style.color = '#B45309';
+            
+            // Mostrar visualmente que son un solo nodo en el diagrama
+            nyB.style.display = 'none';
+            nyAB.style.display = 'none';
+            nyY1.innerText = `${valY1} (b)`;
+            nyY2.innerText = `${valY2} (a+b)`;
+            nyY1.classList.add('node-active');
+            nyY2.classList.add('node-active');
+        }
+    }
+
+    // Inicializar
+    updateValues();
+</script>
+</body>
+</html>
